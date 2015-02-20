@@ -4,9 +4,9 @@ module Precious
       include HasPage
 
       attr_reader :content, :page, :header, :footer
-      DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+      DATE_FORMAT    = "%Y-%m-%d %H:%M:%S"
       DEFAULT_AUTHOR = 'you'
-      @@to_xml =  { :save_with => Nokogiri::XML::Node::SaveOptions::DEFAULT_XHTML ^ 1, :indent => 0, :encoding => 'UTF-8' }
+      @@to_xml       = { :save_with => Nokogiri::XML::Node::SaveOptions::DEFAULT_XHTML ^ 1, :indent => 0, :encoding => 'UTF-8' }
 
       def title
         h1 = @h1_title ? page_header_from_content(@content) : false
@@ -14,7 +14,7 @@ module Precious
       end
 
       def page_header
-        page_header_from_content(@content) || title
+        title
       end
 
       def content
@@ -23,29 +23,49 @@ module Precious
 
       def author
         page_versions = @page.versions
-        first = page_versions ? page_versions.first : false
+        first         = page_versions ? page_versions.first : false
         return DEFAULT_AUTHOR unless first
         first.author.name.respond_to?(:force_encoding) ? first.author.name.force_encoding('UTF-8') : first.author.name
       end
 
       def date
         page_versions = @page.versions
-        first = page_versions ? page_versions.first : false
+        first         = page_versions ? page_versions.first : false
         return Time.now.strftime(DATE_FORMAT) unless first
         first.authored_date.strftime(DATE_FORMAT)
+      end
+
+      def noindex
+        @version ? true : false
       end
 
       def editable
         @editable
       end
 
+      def page_exists
+        @page_exists
+      end
+
+      def allow_editing
+        @allow_editing
+      end
+
       def allow_uploads
         @allow_uploads
       end
 
+      def upload_dest
+        @upload_dest
+      end
+
       def has_header
-        @header = (@page.header || false) if @header.nil?
-        !!@header
+        if @header
+          @header.formatted_data.strip.empty? ? false : true
+        else
+          @header = (@page.header || false)
+          !!@header
+        end
       end
 
       def header_content
@@ -57,8 +77,12 @@ module Precious
       end
 
       def has_footer
-        @footer = (@page.footer || false) if @footer.nil?
-        !!@footer
+        if @footer
+          @footer.formatted_data.strip.empty? ? false : true
+        else
+          @footer = (@page.footer || false)
+          !!@footer
+        end
       end
 
       def footer_content
@@ -68,14 +92,18 @@ module Precious
       def footer_format
         has_footer && @footer.format.to_s
       end
-      
+
       def bar_side
         @bar_side.to_s
       end
 
       def has_sidebar
-        @sidebar = (@page.sidebar || false) if @sidebar.nil?
-        !!@sidebar
+        if @sidebar
+          @sidebar.formatted_data.strip.empty? ? false : true
+        else
+          @sidebar = (@page.sidebar || false)
+          !!@sidebar
+        end
       end
 
       def sidebar_content
@@ -96,6 +124,10 @@ module Precious
 
       def mathjax
         @mathjax
+      end
+
+      def mathjax_config
+        @mathjax_config
       end
 
       def use_identicon
@@ -126,7 +158,7 @@ module Precious
       def find_header_node(doc)
         case @page.format
           when :asciidoc
-            doc.css("div#gollum-root > div#header > h1:first-child")
+            doc.css("div#gollum-root > h1:first-child")
           when :org
             doc.css("div#gollum-root > p.title:first-child")
           when :pod
@@ -141,7 +173,7 @@ module Precious
       # Extracts title from page if present.
       #
       def page_header_from_content(content)
-        doc = build_document(content)
+        doc   = build_document(content)
         title = find_header_node(doc).inner_text.strip
         title = nil if title.empty?
         title
@@ -151,10 +183,12 @@ module Precious
       #
       def content_without_page_header(content)
         doc = build_document(content)
-        title = find_header_node(doc)
-        title.remove unless title.empty?
+          if @h1_title
+            title = find_header_node(doc)
+            title.remove unless title.empty?
+          end
         # .inner_html will cause href escaping on UTF-8
-        doc.css("div#gollum-root").children.to_xml( @@to_xml )
+        doc.css("div#gollum-root").children.to_xml(@@to_xml)
       end
     end
   end

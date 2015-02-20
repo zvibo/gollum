@@ -1,13 +1,13 @@
 gollum -- A wiki built on top of Git
 ====================================
 
-[![Gem Version](https://badge.fury.io/rb/gollum.png)](http://rubygems.org/gems/gollum)
-[![Build Status](https://secure.travis-ci.org/gollum/gollum.png?branch=master)](http://travis-ci.org/gollum/gollum)
-[![Dependency Status](https://gemnasium.com/gollum/gollum.png)](https://gemnasium.com/gollum/gollum)
+[![Gem Version](https://badge.fury.io/rb/gollum.svg)](http://badge.fury.io/rb/gollum)
+[![Build Status](https://travis-ci.org/gollum/gollum.svg?branch=master)](https://travis-ci.org/gollum/gollum)
+[![Dependency Status](https://gemnasium.com/gollum/gollum.svg)](https://gemnasium.com/gollum/gollum)
 
 ## DESCRIPTION
 
-Gollum is a simple wiki system built on top of Git that powers GitHub Wikis.
+Gollum is a simple wiki system built on top of Git.
 
 Gollum wikis are simply Git repositories that adhere to a specific format.
 Gollum pages may be written in a variety of formats and can be edited in a
@@ -23,13 +23,13 @@ Gollum follows the rules of [Semantic Versioning](http://semver.org/) and uses
 ## SYSTEM REQUIREMENTS
 
 - Python 2.5+ (2.7.3 recommended)
-- Ruby 1.8.7+ (1.9.3 recommended)
+- Ruby 1.9.3+ (1.9.3 recommended)
 - Unix like operating system (OS X, Ubuntu, Debian, and more)
 - Will not work on Windows (because of [grit](https://github.com/github/grit))
 
 ## SECURITY
 
-Don't enable `--custom-css` or `--custom-js` unless you trust every user who has the ability to edit the wiki.
+Don't enable `--custom-css`, `--custom-js` or `--mathjax-config` unless you trust every user who has the ability to edit the wiki.
 A better solution with more security is being tracked in [#665](https://github.com/gollum/gollum/issues/665).
 
 ## INSTALLATION
@@ -39,6 +39,7 @@ The best way to install Gollum is with RubyGems:
 ```bash
 $ [sudo] gem install gollum
 ```
+You may first need to install some additional [development packages](https://github.com/gollum/gollum/wiki/Installation) for your OS.
 
 If you're installing from source, you can use [Bundler][bundler] to pick up all the
 gems:
@@ -51,7 +52,7 @@ In order to use the various formats that Gollum supports, you will need to
 separately install the necessary dependencies for each format. You only need
 to install the dependencies for the formats that you plan to use.
 
-* [ASCIIDoc](http://www.methods.co.nz/asciidoc/) -- `brew install asciidoc` on mac or `apt-get install -y asciidoc` on Ubuntu
+* [AsciiDoc](http://asciidoctor.org) -- `gem install asciidoctor`
 * [Creole](http://wikicreole.org/) -- `gem install creole`
 * [Markdown](http://daringfireball.net/projects/markdown/) -- `gem install redcarpet`
 * [GitHub Flavored Markdown](https://help.github.com/articles/github-flavored-markdown) -- `gem install github-markdown`
@@ -91,13 +92,42 @@ utility, you can run it like so:
 $ gollum --help
 ```
 
+This will show you the options you can pass as arguments to the `gollum` command:
+
+```bash
+Options:
+        --port [PORT]                Bind port (default 4567).
+        --host [HOST]                Hostname or IP address to listen on (default 0.0.0.0).
+        --version                    Display current version.
+        --config [CONFIG]            Path to additional configuration file.
+        --adapter [ADAPTER]          Git adapter to use in the backend. Defaults to grit.
+        --irb                        Start an irb process with gollum loaded for the current wiki.
+        --css                        Inject custom css. Uses custom.css from root repository.
+        --js                         Inject custom js. Uses custom.js from root repository.
+        --template-dir [PATH]        Specify custom template directory.
+        --page-file-dir [PATH]       Specify the sub directory for all page files (default: repository root).
+        --base-path [PATH]           Specify the base path for the served pages (default: /) Example: --base-path wiki yields the home page accessible at http://localhost:4567/wiki/.
+        --gollum-path [PATH]         Specify the path to the git repository to be served.
+        --ref [REF]                  Specify the repository ref to use (default: master).
+        --bare                       Specify that the repository is bare (only necessary when using the grit adapter).
+        --no-edit                    Restricts editing capability through frontend.
+        --no-live-preview            Disables livepreview.
+        --live-preview               Enables livepreview.
+        --allow-uploads [MODE]       Allows file uploads. Modes: dir (default, store all uploads in the same directory), page (store each upload at the same location as the page).
+        --mathjax                    Enables mathjax for rendering mathematical equations. Uses the TeX-AMS-MML_HTMLorMML config with the autoload-all extension by default.
+        --mathjax-config [SOURCE]    Inject custom mathjax config file. Uses mathjax.config.js from root repository by default.
+        --user-icons [SOURCE]        Set the history user icons. Valid values: gravatar, identicon, none. Default: none.
+        --show-all                   Shows all files in file view. By default only valid pages are shown.
+        --collapse-tree              Collapse file view tree. By default, expanded tree is shown.
+        --h1-title                   Sets page title to value of first h1.
+```
+
 Note that the gollum server will not run on Windows because of [an issue](https://github.com/rtomayko/posix-spawn/issues/9) with posix-spawn (which is used by Grit).
 
 ### RACK
 
-You can also run gollum with any rack-compatible server by placing this config.ru
-file inside your wiki repository. This allows you to utilize any Rack middleware
-like Rack::Auth, OmniAuth, etc.
+You can also run gollum with any rack-compatible server by placing configuring a config.ru
+file. This allows you to utilize any Rack middleware like Rack::Auth, OmniAuth, etc. See below for an example of a `config.ru`. You can define all the [options available on the command line](#running) by configuring the app's `:wiki_options` hash. See [here](https://github.com/gollum/gollum/wiki/Using-Gollum-with-Rack) for the names of the options corresponding to the command line switches.  
 
 ```ruby
 #!/usr/bin/env ruby

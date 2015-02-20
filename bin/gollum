@@ -17,11 +17,12 @@ require 'optparse'
 require 'rubygems'
 require 'gollum'
 
-exec = {}
-options = { 'port' => 4567, 'bind' => '0.0.0.0' }
+exec         = {}
+options      = { 'port' => 4567, 'bind' => '0.0.0.0' }
 wiki_options = {
-    :live_preview => false,
+    :live_preview  => false,
     :allow_uploads => false,
+    :allow_editing => true,
 }
 
 opts = OptionParser.new do |opts|
@@ -44,6 +45,10 @@ opts = OptionParser.new do |opts|
     options['config'] = config
   end
 
+  opts.on("--adapter [ADAPTER]", "Git adapter to use in the backend. Defaults to grit.") do |adapter|
+    Gollum::GIT_ADAPTER = adapter
+  end
+
   opts.on("--irb", "Start an irb process with gollum loaded for the current wiki.") do
     options['irb'] = true
   end
@@ -56,20 +61,32 @@ opts = OptionParser.new do |opts|
     wiki_options[:js] = true
   end
 
+  opts.on("--template-dir [PATH]", "Specify custom template directory") do |path|
+    wiki_options[:template_dir] = path
+  end
+
   opts.on("--page-file-dir [PATH]", "Specify the sub directory for all page files (default: repository root).") do |path|
     wiki_options[:page_file_dir] = path
   end
 
-  opts.on("--base-path [PATH]", "Specify the base path.") do |path|
+  opts.on("--base-path [PATH]", "Specify the base path for the served pages (default: /) Example: --base-path wiki yields the home page accessible at http://localhost:4567/wiki/.") do |path|
     wiki_options[:base_path] = path
   end
 
-  opts.on("--gollum-path [PATH]", "Specify the gollum path.") do |path|
+  opts.on("--gollum-path [PATH]", "Specify the path to the git repository to be served.") do |path|
     wiki_options[:gollum_path] = path
   end
 
   opts.on("--ref [REF]", "Specify the repository ref to use (default: master).") do |ref|
     wiki_options[:ref] = ref
+  end
+
+  opts.on("--bare", "Specify that the repository is bare (only necessary when using the grit adapter).") do
+    wiki_options[:repo_is_bare] = true
+  end
+
+  opts.on("--no-edit", "Restricts editing capability through frontend.")  do
+    wiki_options[:allow_editing] = false
   end
 
   opts.on("--no-live-preview", "Disables livepreview.") do
@@ -80,12 +97,17 @@ opts = OptionParser.new do |opts|
     wiki_options[:live_preview] = true
   end
 
-  opts.on("--allow-uploads", "Allows file uploads.") do
-    wiki_options[:allow_uploads] = true
+  opts.on("--allow-uploads [MODE]", [:dir, :page], "Allows file uploads. Modes: dir (default, store all uploads in the same directory), page (store each upload at the same location as the page).") do |mode|
+    wiki_options[:allow_uploads]    = true
+    wiki_options[:per_page_uploads] = true if mode == :page
   end
 
-  opts.on("--mathjax", "Enables mathjax.") do
+  opts.on("--mathjax", "Enables mathjax for rendering mathematical equations. Uses the TeX-AMS-MML_HTMLorMML config with the autoload-all extension by default.") do
     wiki_options[:mathjax] = true
+  end
+
+  opts.on("--mathjax-config [SOURCE]", "Inject custom mathjax config file. Uses mathjax.config.js from root repository by default") do |source|
+    wiki_options[:mathjax_config] = source || 'mathjax.config.js'
   end
 
   opts.on("--user-icons [SOURCE]", "Set the history user icons. Valid values: gravatar, identicon, none. Default: none.") do |source|
@@ -115,8 +137,8 @@ end
 
 # --gollum-path wins over ARGV[0]
 gollum_path = wiki_options[:gollum_path] ?
-              wiki_options[:gollum_path] :
-              ARGV[0] || Dir.pwd
+    wiki_options[:gollum_path] :
+    ARGV[0] || Dir.pwd
 
 if options['irb']
   require 'irb'
@@ -146,7 +168,9 @@ if options['irb']
   begin
     require 'gollum-lib'
     wiki = Gollum::Wiki.new(gollum_path, wiki_options)
-    if !wiki.exist? then raise Gollum::InvalidGitRepositoryError end
+    if !wiki.exist? then
+      raise Gollum::InvalidGitRepositoryError
+    end
     puts "Loaded Gollum wiki at #{File.expand_path(gollum_path).inspect}."
     puts
     puts %(    page = wiki.page('page-name'))
@@ -168,6 +192,7 @@ else
   require 'gollum/app'
   Precious::App.set(:gollum_path, gollum_path)
   Precious::App.set(:wiki_options, wiki_options)
+  Precious::App.settings.mustache[:templates] = wiki_options[:template_dir] if wiki_options[:template_dir]
 
   if cfg = options['config']
     # If the path begins with a '/' it will be considered an absolute path,
@@ -187,7 +212,7 @@ else
       def initialize base_path
         @mg = Rack::Builder.new do
           map '/' do
-            run Proc.new { [ 302, {'Location'=> "/#{base_path}" }, [] ] }
+            run Proc.new { [302, { 'Location' => "/#{base_path}" }, []] }
           end
 
           map "/#{base_path}" do

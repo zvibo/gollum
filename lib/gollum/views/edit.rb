@@ -6,10 +6,10 @@ module Precious
 
       attr_reader :page, :content
 
-       # return path set in app.rb not @page.path
-       def path
-         @path
-       end
+      # return path set in app.rb not @page.path
+      def path
+        @path
+      end
 
       def title
         "#{@page.title}"
@@ -58,6 +58,14 @@ module Precious
 
       def is_edit_page
         true
+      end
+
+      def allow_uploads
+        @allow_uploads
+      end
+
+      def upload_dest
+        @upload_dest
       end
 
       def format
